@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Prime Ledger · Coin</title>
+  <style>
+    :root { color-scheme: light; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      background: transparent;
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+    #stage { position: fixed; inset: 0; }
+    #stage canvas { display: block; cursor: grab; touch-action: none; }
+    #stage canvas:active { cursor: grabbing; }
+  </style>
+</head>
+<body>
+  <div id="stage"></div>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+    // ---------- Brand tokens ----------
+    const TEAL       = '#0388A6';
+    const TEAL_LIGHT = '#B3DDE8';
+    const NAVY       = '#081F34';
+
+    // ---------- Signet: official Prime Ledger PL monogram (base64 PNG) ----------
+    const SIGNET_DATA_URL = 'data:image/png;base64,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';
+
+    // Loads the signet, then recolors it white via source-in compositing so it
+    // reads cleanly on the navy face.
+    function loadSignetWhite() {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          const c = document.createElement('canvas');
+          c.width = img.naturalWidth;
+          c.height = img.naturalHeight;
+          const cx = c.getContext('2d');
+          cx.drawImage(img, 0, 0);
+          cx.globalCompositeOperation = 'source-in';
+          cx.fillStyle = '#FFFFFF';
+          cx.fillRect(0, 0, c.width, c.height);
+          resolve(c);
+        };
+        img.onerror = reject;
+        img.src = SIGNET_DATA_URL;
+      });
+    }
+
+    // ---------- Face texture ----------
+    // Navy disk, subtle striations, hairline rings, signet at center.
+    // No arc text, no marks.
+    function buildFaceTexture(signetImg, { size = 1024, rotate180 = false } = {}) {
+      const cv = document.createElement('canvas');
+      cv.width = cv.height = size;
+      const ctx = cv.getContext('2d');
+      if (rotate180) {
+        ctx.translate(size, size);
+        ctx.rotate(Math.PI);
+      }
+      const cx = size / 2, cy = size / 2;
+      const R  = size / 2;
+
+      // Navy radial gradient background
+      const navyGrad = ctx.createRadialGradient(cx - R * 0.25, cy - R * 0.3, R * 0.05, cx, cy, R);
+      navyGrad.addColorStop(0, '#11324f');
+      navyGrad.addColorStop(0.55, NAVY);
+      navyGrad.addColorStop(1, '#04111e');
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(cx, cy, R - 2, 0, Math.PI * 2);
+      ctx.clip();
+
+      ctx.fillStyle = navyGrad;
+      ctx.fillRect(0, 0, size, size);
+
+      // Faint radial striations (brand "barcode" echo)
+      ctx.globalAlpha = 0.06;
+      ctx.strokeStyle = TEAL_LIGHT;
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 60; i++) {
+        const a = (i / 60) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.moveTo(cx + Math.cos(a) * R * 0.18, cy + Math.sin(a) * R * 0.18);
+        ctx.lineTo(cx + Math.cos(a) * R * 0.92, cy + Math.sin(a) * R * 0.92);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+
+      // Outer hairline ring
+      ctx.strokeStyle = 'rgba(179,221,232,0.45)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, R * 0.94, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Inner concentric rings (define the arc-text band)
+      ctx.strokeStyle = 'rgba(3,136,166,0.55)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(cx, cy, R * 0.74, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(3,136,166,0.30)';
+      ctx.beginPath();
+      ctx.arc(cx, cy, R * 0.88, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // ---- Arc text helper ----
+      function arcText(text, radius, centerAngle, arcSpan, opts = {}) {
+        const {
+          size: fs = 44,
+          color = TEAL_LIGHT,
+          weight = 600,
+          flip = false,
+        } = opts;
+        ctx.save();
+        ctx.font = `${weight} ${fs}px "Syne", system-ui, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = color;
+
+        const chars  = text.split('');
+        const widths = chars.map(c => ctx.measureText(c).width);
+        const totalW = widths.reduce((a, b) => a + b, 0) + (chars.length - 1) * fs * 0.18;
+        const span   = Math.min(arcSpan, totalW / radius);
+        const dir    = flip ? -1 : 1;
+
+        let acc = 0;
+        for (let i = 0; i < chars.length; i++) {
+          const w = widths[i];
+          const charCenterOffset = acc + w / 2;
+          const t = (charCenterOffset / totalW) - 0.5;
+          const angle = centerAngle + dir * t * span;
+          const x = cx + Math.cos(angle) * radius;
+          const y = cy + Math.sin(angle) * radius;
+          ctx.save();
+          ctx.translate(x, y);
+          ctx.rotate(angle + (flip ? -Math.PI / 2 : Math.PI / 2));
+          ctx.fillText(chars[i], 0, 0);
+          ctx.restore();
+          acc += w + fs * 0.18;
+        }
+        ctx.restore();
+      }
+
+      // Top arc: TOKENIZED ASSETS
+      arcText('TOKENIZED ASSETS', R * 0.81, -Math.PI / 2, Math.PI * 0.85, {
+        size: 52, weight: 600, color: TEAL_LIGHT, flip: false,
+      });
+      // Bottom arc: INVESTMENT ADVISORY
+      arcText('INVESTMENT ADVISORY', R * 0.81,  Math.PI / 2, Math.PI * 0.85, {
+        size: 48, weight: 600, color: TEAL_LIGHT, flip: true,
+      });
+
+      // Small teal dots at 9 and 3 o'clock between the words
+      ctx.fillStyle = TEAL;
+      [0, Math.PI].forEach(a => {
+        ctx.beginPath();
+        ctx.arc(cx + Math.cos(a) * R * 0.81, cy + Math.sin(a) * R * 0.81, 6, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // ---- Signet logo at center ----
+      ctx.save();
+      ctx.translate(cx, cy);
+
+      // Soft teal glow behind the signet
+      const glow = ctx.createRadialGradient(0, 0, R * 0.05, 0, 0, R * 0.55);
+      glow.addColorStop(0, 'rgba(3,136,166,0.35)');
+      glow.addColorStop(0.6, 'rgba(3,136,166,0.10)');
+      glow.addColorStop(1, 'rgba(3,136,166,0)');
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(0, 0, R * 0.55, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Signet — sized to fill the inner ring
+      const sigSize = R * 1.30;
+      ctx.drawImage(signetImg, -sigSize / 2, -sigSize / 2, sigSize, sigSize);
+
+      ctx.restore();
+
+      // Bevel highlight (top arc)
+      const bevel = ctx.createRadialGradient(cx, cy * 0.4, R * 0.5, cx, cy, R);
+      bevel.addColorStop(0, 'rgba(255,255,255,0)');
+      bevel.addColorStop(0.85, 'rgba(255,255,255,0)');
+      bevel.addColorStop(0.97, 'rgba(255,255,255,0.18)');
+      bevel.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = bevel;
+      ctx.fillRect(0, 0, size, size);
+
+      ctx.restore();
+
+      const tex = new THREE.CanvasTexture(cv);
+      tex.anisotropy = 16;
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.needsUpdate = true;
+      return tex;
+    }
+
+    // ---------- Scene ----------
+    const stage = document.getElementById('stage');
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.05;
+    stage.appendChild(renderer.domElement);
+
+    const scene = new THREE.Scene();
+
+    // Environment for reflections / glass refraction
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    const envScene = new RoomEnvironment();
+    const envMap = pmrem.fromScene(envScene, 0.04).texture;
+    scene.environment = envMap;
+
+    const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
+    camera.position.set(0, 0.4, 7);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    controls.rotateSpeed = 0.9;
+    controls.enableZoom = false;
+    controls.enablePan = false;
+    controls.minDistance = 6;
+    controls.maxDistance = 6;
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 1.2;
+
+    // Pause autorotate while user interacts; resume after idle
+    let idleTimer;
+    const resetIdle = () => {
+      controls.autoRotate = false;
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => { controls.autoRotate = true; }, 1800);
+    };
+    renderer.domElement.addEventListener('pointerdown', resetIdle);
+    renderer.domElement.addEventListener('wheel', resetIdle, { passive: true });
+
+    // ---------- Lights ----------
+    scene.add(new THREE.AmbientLight(0xffffff, 0.35));
+
+    const key = new THREE.DirectionalLight(0xffffff, 1.6);
+    key.position.set(3, 5, 4);
+    scene.add(key);
+
+    const rimLight = new THREE.PointLight(0x6fc6e0, 4, 20, 1.8);
+    rimLight.position.set(-3, 2, -2);
+    scene.add(rimLight);
+
+    const fillLight = new THREE.PointLight(0x4a8db8, 2.2, 18, 1.6);
+    fillLight.position.set(2, -3, 2);
+    scene.add(fillLight);
+
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x081F34, 0.25));
+
+    // ---------- Coin geometry ----------
+    const COIN_RADIUS = 1.6;
+    const COIN_DEPTH  = 0.36;
+    const BEVEL       = 0.07;
+
+    const faceGeom = new THREE.CircleGeometry(COIN_RADIUS - 0.02, 128);
+
+    function buildSideGeometry() {
+      const r = COIN_RADIUS;
+      const d = COIN_DEPTH / 2;
+      const b = BEVEL;
+      const pts = [];
+      pts.push(new THREE.Vector2(r - b, d));
+      const seg = 12;
+      for (let i = 1; i <= seg; i++) {
+        const a = (i / seg) * (Math.PI / 2);
+        pts.push(new THREE.Vector2(r - b + Math.sin(a) * b, d - b + Math.cos(a) * b));
+      }
+      pts.push(new THREE.Vector2(r, -d + b));
+      for (let i = 0; i <= seg; i++) {
+        const a = (i / seg) * (Math.PI / 2);
+        pts.push(new THREE.Vector2(r - b + Math.cos(a) * b, -d + b - Math.sin(a) * b));
+      }
+      const g = new THREE.LatheGeometry(pts, 160);
+      g.computeVertexNormals();
+      return g;
+    }
+    const sideGeom = buildSideGeometry();
+
+    // ---------- Materials ----------
+    const signetImg = await loadSignetWhite();
+    const frontTex  = buildFaceTexture(signetImg, { size: 1024, rotate180: false });
+    const backTex   = buildFaceTexture(signetImg, { size: 1024, rotate180: true  });
+
+    function makeFaceMaterial(tex) {
+      return new THREE.MeshPhysicalMaterial({
+        map: tex,
+        emissiveMap: tex,
+        emissive: new THREE.Color(0xffffff),
+        emissiveIntensity: 0.35,
+        metalness: 0.25,
+        roughness: 0.32,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.10,
+        envMapIntensity: 0.9,
+        side: THREE.FrontSide,
+      });
+    }
+
+    // Glass-ish rim — translucent teal with high transmission
+    const rimMat = new THREE.MeshPhysicalMaterial({
+      color: new THREE.Color('#bfe6f0'),
+      metalness: 0.0,
+      roughness: 0.05,
+      transmission: 0.95,
+      thickness: 0.55,
+      ior: 1.45,
+      attenuationColor: new THREE.Color('#3aa3c4'),
+      attenuationDistance: 1.8,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.04,
+      envMapIntensity: 1.4,
+      transparent: true,
+      side: THREE.DoubleSide,
+    });
+
+    // ---------- Coin group ----------
+    const coin = new THREE.Group();
+
+    const side = new THREE.Mesh(sideGeom, rimMat);
+    coin.add(side);
+
+    const faceFront = new THREE.Mesh(faceGeom, makeFaceMaterial(frontTex));
+    faceFront.position.y =  COIN_DEPTH / 2 + 0.001;
+    faceFront.rotation.x = -Math.PI / 2;
+    coin.add(faceFront);
+
+    const faceBack = new THREE.Mesh(faceGeom, makeFaceMaterial(backTex));
+    faceBack.position.y = -COIN_DEPTH / 2 - 0.001;
+    faceBack.rotation.x =  Math.PI / 2;
+    coin.add(faceBack);
+
+    // Orient coin standing up, slight 3/4 tilt
+    coin.rotation.x = Math.PI / 2;
+    coin.rotation.y = -0.25;
+    coin.rotation.z = 0.18;
+
+    scene.add(coin);
+
+    // ---------- Soft contact shadow ----------
+    const sc = document.createElement('canvas'); sc.width = sc.height = 256;
+    const sctx = sc.getContext('2d');
+    const sg = sctx.createRadialGradient(128, 128, 8, 128, 128, 128);
+    sg.addColorStop(0, 'rgba(8,31,52,0.55)');
+    sg.addColorStop(0.6, 'rgba(8,31,52,0.12)');
+    sg.addColorStop(1, 'rgba(8,31,52,0)');
+    sctx.fillStyle = sg; sctx.fillRect(0, 0, 256, 256);
+    const shadowTex = new THREE.CanvasTexture(sc);
+
+    const shadow = new THREE.Mesh(
+      new THREE.CircleGeometry(2.4, 64),
+      new THREE.MeshBasicMaterial({
+        map: shadowTex,
+        transparent: true,
+        opacity: 0.65,
+        depthWrite: false,
+      })
+    );
+    shadow.rotation.x = -Math.PI / 2;
+    shadow.position.y = -1.9;
+    scene.add(shadow);
+
+    // ---------- Resize ----------
+    function resize() {
+      const w = stage.clientWidth;
+      const h = stage.clientHeight;
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // ---------- Loop ----------
+    function tick() {
+      controls.update();
+      shadow.material.opacity = 0.45 + 0.15 * Math.abs(Math.cos(coin.rotation.y));
+      renderer.render(scene, camera);
+      requestAnimationFrame(tick);
+    }
+    tick();
+  </script>
+</body>
+</html>
