@@ -267,6 +267,7 @@
     const envScene = new RoomEnvironment();
     const envMap = pmrem.fromScene(envScene, 0.04).texture;
     scene.environment = envMap;
+    scene.environmentIntensity = 1.6;
 
     const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
     camera.position.set(0, 0, 9);
@@ -285,21 +286,31 @@
     // Coin stays in its tilted pose by default; user can still drag to look around.
 
     // ---------- Lights ---------- (warm, to read as polished copper)
-    scene.add(new THREE.AmbientLight(0xfff2e0, 0.40));
+    scene.add(new THREE.AmbientLight(0xfff2e0, 0.75));
 
     const key = new THREE.DirectionalLight(0xfff4e2, 1.7);
     key.position.set(3, 5, 4);
     scene.add(key);
 
-    const rimLight = new THREE.PointLight(0xffd9a0, 4.2, 20, 1.8);
+    // Back/key from the opposite side so the coin stays lit as it rotates
+    const backKey = new THREE.DirectionalLight(0xfff4e2, 1.5);
+    backKey.position.set(-3, 4, -5);
+    scene.add(backKey);
+
+    const rimLight = new THREE.PointLight(0xffd9a0, 4.2, 22, 1.8);
     rimLight.position.set(-3, 2, -2);
     scene.add(rimLight);
 
-    const fillLight = new THREE.PointLight(0xc8895a, 2.4, 18, 1.6);
+    const fillLight = new THREE.PointLight(0xc8895a, 2.6, 20, 1.6);
     fillLight.position.set(2, -3, 2);
     scene.add(fillLight);
 
-    scene.add(new THREE.HemisphereLight(0xfff0dd, 0x3a2410, 0.30));
+    // Warm fill from directly behind to kill the near-black back face
+    const backFill = new THREE.PointLight(0xffcaa0, 3.0, 22, 1.6);
+    backFill.position.set(0, 0, -6);
+    scene.add(backFill);
+
+    scene.add(new THREE.HemisphereLight(0xfff0dd, 0x6b4420, 0.55));
 
     // ---------- Coin geometry ----------
     const COIN_RADIUS = 1.6;
@@ -340,11 +351,14 @@
       return new THREE.MeshPhysicalMaterial({
         map: tex,
         color: new THREE.Color('#ffffff'),
-        metalness: 1.0,
-        roughness: 0.42,
-        clearcoat: 0.5,
+        emissiveMap: tex,
+        emissive: new THREE.Color('#3a2008'),
+        emissiveIntensity: 0.55,
+        metalness: 0.45,
+        roughness: 0.48,
+        clearcoat: 0.45,
         clearcoatRoughness: 0.35,
-        envMapIntensity: 1.1,
+        envMapIntensity: 1.4,
         side: THREE.FrontSide,
       });
     }
@@ -352,11 +366,11 @@
     // Satin copper rim — same brushed-metal finish as the faces (no glass).
     const rimMat = new THREE.MeshPhysicalMaterial({
       color: new THREE.Color('#b87333'),
-      metalness: 1.0,
-      roughness: 0.40,
+      metalness: 0.7,
+      roughness: 0.42,
       clearcoat: 0.5,
       clearcoatRoughness: 0.32,
-      envMapIntensity: 1.2,
+      envMapIntensity: 1.5,
       side: THREE.DoubleSide,
     });
 
