@@ -9,11 +9,11 @@
     html, body { margin: 0; height: 100%; }
     body {
       background: transparent;
-      overflow: visible;
+      overflow: hidden;
       -webkit-font-smoothing: antialiased;
     }
     #stage { position: fixed; inset: 0; }
-    #stage canvas { display: block; cursor: grab; touch-action: none; }
+    #stage canvas { display: block; width: 100%; height: 100%; cursor: grab; touch-action: none; }
     #stage canvas:active { cursor: grabbing; }
   </style>
 </head>
@@ -261,7 +261,7 @@
     scene.environment = envMap;
 
     const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
-    camera.position.set(0, 0.4, 7);
+    camera.position.set(0, 0, 9);
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
@@ -269,22 +269,12 @@
     controls.rotateSpeed = 0.9;
     controls.enableZoom = false;
     controls.enablePan = false;
-    controls.minDistance = 6;
-    controls.maxDistance = 6;
-    controls.autoRotate = true;
-    controls.autoRotateSpeed = 1.2;
+    controls.autoRotate = true;        // spin like a flipping coin
+    controls.autoRotateSpeed = 2.2;    // ~7s per revolution
     window.__plControls = controls;
     window.__plCamera = camera;
 
-    // Pause autorotate while user interacts; resume after idle
-    let idleTimer;
-    const resetIdle = () => {
-      controls.autoRotate = false;
-      clearTimeout(idleTimer);
-      idleTimer = setTimeout(() => { controls.autoRotate = true; }, 1800);
-    };
-    renderer.domElement.addEventListener('pointerdown', resetIdle);
-    renderer.domElement.addEventListener('wheel', resetIdle, { passive: true });
+    // Coin stays in its tilted pose by default; user can still drag to look around.
 
     // ---------- Lights ----------
     scene.add(new THREE.AmbientLight(0xffffff, 0.35));
@@ -385,10 +375,10 @@
     faceBack.rotation.x =  Math.PI / 2;
     coin.add(faceBack);
 
-    // Orient coin standing up, slight 3/4 tilt
+    // Orient coin standing up, pronounced 3/4 tilt to the left
     coin.rotation.x = Math.PI / 2;
-    coin.rotation.y = -0.25;
-    coin.rotation.z = 0.18;
+    coin.rotation.y = -0.55;
+    coin.rotation.z = 0.12;
 
     scene.add(coin);
 
@@ -396,11 +386,33 @@
     //  on any host background without an iframe-clipping seam.)
 
     // ---------- Resize ----------
+    // The coin's bounding sphere (radius ~1.65). We pull the camera back far
+    // enough that the FULL coin fits inside the frame with margin — accounting
+    // for BOTH the vertical FOV and the horizontal limit on narrow/tall frames.
+    const COIN_BOUND = 1.72;   // radius of coin + a touch of slack
+    const FIT_MARGIN = 1.35;   // >1 = padding around the coin (higher = smaller coin)
+
     function resize() {
       const w = stage.clientWidth;
       const h = stage.clientHeight;
-      renderer.setSize(w, h, false);
-      camera.aspect = w / h;
+      renderer.setSize(w, h);
+
+      const aspect = w / h;
+      camera.aspect = aspect;
+
+      const vFov = THREE.MathUtils.degToRad(camera.fov);
+      // Distance needed so the bound fits vertically
+      const distV = COIN_BOUND / Math.tan(vFov / 2);
+      // Distance needed so the bound fits horizontally
+      const hFov = 2 * Math.atan(Math.tan(vFov / 2) * aspect);
+      const distH = COIN_BOUND / Math.tan(hFov / 2);
+      // Use whichever is larger (the more constrained axis), plus margin
+      const dist = Math.max(distV, distH) * FIT_MARGIN;
+
+      camera.position.set(0, 0, dist);
+      camera.lookAt(0, 0, 0);
+      controls.target.set(0, 0, 0);
+      controls.update();
       camera.updateProjectionMatrix();
     }
     window.addEventListener('resize', resize);
